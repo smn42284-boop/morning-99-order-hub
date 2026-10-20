@@ -30,7 +30,7 @@ export const ORDERS_KEY = "morning99_orders";
 export const TAX_RATE = 0.08;
 export const CATEGORIES: Category[] = ["Breakfast", "Coffee & Drinks", "Specials", "Desserts"];
 
-const IMG: Record<string, string> = { b1, b2, b3, b4, c1, c2, c3, c4, s1, s2, d1, d2 };
+const IMG = { b1, b2, b3, b4, c1, c2, c3, c4, s1, s2, d1, d2 };
 
 export const MENU: MenuItem[] = [
   { id: "b1", name: "99 Morning Set", price: 8.5, category: "Breakfast", desc: "Eggs, toast, sausage & hash brown", img: IMG.b1 },
