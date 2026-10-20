@@ -1,0 +1,57 @@
+export type Category = "Breakfast" | "Coffee & Drinks" | "Specials" | "Desserts";
+export type MenuItem = { id: string; name: string; price: number; category: Category; desc: string };
+export type OrderLine = { id: string; name: string; price: number; qty: number };
+export type OrderStatus = "Pending" | "Preparing" | "Ready";
+export type Order = {
+  id: string;
+  table: number;
+  items: OrderLine[];
+  subtotal: number;
+  tax: number;
+  total: number;
+  status: OrderStatus;
+  timestamp: string;
+};
+
+export const ORDERS_KEY = "morning99_orders";
+export const TAX_RATE = 0.08;
+export const CATEGORIES: Category[] = ["Breakfast", "Coffee & Drinks", "Specials", "Desserts"];
+
+export const MENU: MenuItem[] = [
+  { id: "b1", name: "99 Morning Set", price: 8.5, category: "Breakfast", desc: "Eggs, toast, sausage & hash brown" },
+  { id: "b2", name: "Avocado Toast", price: 6.5, category: "Breakfast", desc: "Sourdough, smashed avo, chili flakes" },
+  { id: "b3", name: "Fluffy Pancakes", price: 7.0, category: "Breakfast", desc: "Maple syrup & whipped butter" },
+  { id: "b4", name: "Mohinga Bowl", price: 5.5, category: "Breakfast", desc: "Fish noodle soup, crispy fritters" },
+  { id: "c1", name: "Signature Iced Latte", price: 4.0, category: "Coffee & Drinks", desc: "Double shot, house syrup" },
+  { id: "c2", name: "Hot Americano", price: 3.0, category: "Coffee & Drinks", desc: "Freshly pulled espresso" },
+  { id: "c3", name: "Burmese Milk Tea", price: 2.5, category: "Coffee & Drinks", desc: "Strong, sweet & creamy" },
+  { id: "c4", name: "Fresh Orange Juice", price: 3.5, category: "Coffee & Drinks", desc: "Squeezed to order" },
+  { id: "s1", name: "Sunrise Benedict", price: 9.5, category: "Specials", desc: "Poached eggs, hollandaise, ham" },
+  { id: "s2", name: "Golden Shakshuka", price: 8.0, category: "Specials", desc: "Baked eggs in spiced tomato" },
+  { id: "d1", name: "Honey Butter Croissant", price: 3.5, category: "Desserts", desc: "Flaky, warm, glazed" },
+  { id: "d2", name: "Mango Sticky Rice", price: 4.5, category: "Desserts", desc: "Coconut cream drizzle" },
+];
+
+export const round2 = (n: number) => Math.round(n * 100) / 100;
+
+export function computeTotals(items: OrderLine[]) {
+  const subtotal = round2(items.reduce((s, i) => s + i.price * i.qty, 0));
+  const tax = round2(subtotal * TAX_RATE);
+  return { subtotal, tax, total: round2(subtotal + tax) };
+}
+
+export function loadOrders(): Order[] {
+  try {
+    return JSON.parse(localStorage.getItem(ORDERS_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+export function saveOrders(orders: Order[]) {
+  localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+  window.dispatchEvent(new Event("morning99:orders"));
+}
+
+export const nextStatus = (s: OrderStatus): OrderStatus | null =>
+  s === "Pending" ? "Preparing" : s === "Preparing" ? "Ready" : null;
