@@ -98,8 +98,8 @@ function WaiterMode() {
     setCart((c) => c.map((l) => (l.id === id ? { ...l, qty: l.qty + d } : l)).filter((l) => l.qty > 0));
 
   const submit = () => {
-    if (!table) return toast.error("Please select a table first");
-    if (!cart.length) return toast.error("Add at least one item");
+    if (!table) { toast.error("Please select a table first"); return; }
+    if (!cart.length) { toast.error("Add at least one item"); return; }
     const order: Order = { id: crypto.randomUUID(), table, items: cart, ...totals, status: "Pending", timestamp: new Date().toISOString() };
     saveOrders([...loadOrders(), order]);
     toast.success(`Order for Table ${table} sent to kitchen`, { description: `${count} items · ${money(totals.total)}` });
@@ -232,7 +232,7 @@ function KitchenMode() {
     saveOrders(loadOrders().map((o) => (o.id === id ? { ...o, status: nextStatus(o.status) ?? o.status } : o)));
   const clear = () => {
     const n = loadOrders().filter((o) => o.status === "Ready").length;
-    if (!n) return toast("No completed orders to clear");
+    if (!n) { toast("No completed orders to clear"); return; }
     saveOrders(loadOrders().filter((o) => o.status !== "Ready"));
     toast.success(`Cleared ${n} completed order${n > 1 ? "s" : ""}`);
   };
