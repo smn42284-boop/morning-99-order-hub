@@ -139,15 +139,18 @@ function WaiterMode() {
             {MENU.filter((m) => m.category === cat).map((m) => {
               const inCart = cart.find((l) => l.id === m.id)?.qty;
               return (
-                <div key={m.id} className="flex flex-col rounded-2xl border bg-card p-4 shadow-soft">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-display text-lg leading-snug">{m.name}</h3>
-                    <span className="font-semibold text-primary-deep">{money(m.price)}</span>
+                <div key={m.id} className="flex flex-col overflow-hidden rounded-2xl border bg-card shadow-soft">
+                  <img src={m.img} alt={m.name} loading="lazy" width={800} height={600} className="h-36 w-full object-cover" />
+                  <div className="flex flex-1 flex-col p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="font-display text-lg leading-snug">{m.name}</h3>
+                      <span className="font-semibold text-primary-deep">{money(m.price)}</span>
+                    </div>
+                    <p className="mt-1 flex-1 text-sm text-muted-foreground">{m.desc}</p>
+                    <Button className="mt-4 w-full" onClick={() => add(m.id)}>
+                      <Plus className="h-4 w-4" /> Add to Order {inCart ? <Badge variant="secondary" className="ml-1">{inCart}</Badge> : null}
+                    </Button>
                   </div>
-                  <p className="mt-1 flex-1 text-sm text-muted-foreground">{m.desc}</p>
-                  <Button className="mt-4 w-full" onClick={() => add(m.id)}>
-                    <Plus className="h-4 w-4" /> Add to Order {inCart ? <Badge variant="secondary" className="ml-1">{inCart}</Badge> : null}
-                  </Button>
                 </div>
               );
             })}
