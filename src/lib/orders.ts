@@ -1,5 +1,18 @@
+import b1 from "@/assets/menu/b1.jpg";
+import b2 from "@/assets/menu/b2.jpg";
+import b3 from "@/assets/menu/b3.jpg";
+import b4 from "@/assets/menu/b4.jpg";
+import c1 from "@/assets/menu/c1.jpg";
+import c2 from "@/assets/menu/c2.jpg";
+import c3 from "@/assets/menu/c3.jpg";
+import c4 from "@/assets/menu/c4.jpg";
+import s1 from "@/assets/menu/s1.jpg";
+import s2 from "@/assets/menu/s2.jpg";
+import d1 from "@/assets/menu/d1.jpg";
+import d2 from "@/assets/menu/d2.jpg";
+
 export type Category = "Breakfast" | "Coffee & Drinks" | "Specials" | "Desserts";
-export type MenuItem = { id: string; name: string; price: number; category: Category; desc: string };
+export type MenuItem = { id: string; name: string; price: number; category: Category; desc: string; img: string };
 export type OrderLine = { id: string; name: string; price: number; qty: number };
 export type OrderStatus = "Pending" | "Preparing" | "Ready";
 export type Order = {
