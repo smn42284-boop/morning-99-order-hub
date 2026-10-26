@@ -10,6 +10,7 @@ import {
   type Category, type OrderLine, type Order, type OrderStatus,
 } from "@/lib/orders";
 import { cn } from "@/lib/utils";
+import { createOrder, fetchOrders } from "@/lib/orders-api";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -39,17 +40,35 @@ function usePersisted<T>(key: string, initial: T) {
   return [v, setV] as const;
 }
 
+
 function useOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
+
   useEffect(() => {
-    const sync = () => setOrders(loadOrders());
+    let active = true;
+
+    const sync = async () => {
+      try {
+        const latestOrders = await fetchOrders();
+
+        if (active) {
+          setOrders(latestOrders);
+        }
+      } catch (error) {
+        console.error("Could not load orders:", error);
+      }
+    };
+
     sync();
-    window.addEventListener("storage", sync);
-    window.addEventListener("morning99:orders", sync);
-    return () => { window.removeEventListener("storage", sync); window.removeEventListener("morning99:orders", sync); };
+
+    return () => {
+      active = false;
+    };
   }, []);
+
   return orders;
 }
+
 
 function App() {
   const [mode, setMode] = usePersisted<Mode>("morning99_mode", "waiter");
@@ -97,11 +116,22 @@ function WaiterMode() {
   const change = (id: string, d: number) =>
     setCart((c) => c.map((l) => (l.id === id ? { ...l, qty: l.qty + d } : l)).filter((l) => l.qty > 0));
 
-  const submit = () => {
+  const submit = async() => {
     if (!table) { toast.error("Please select a table first"); return; }
     if (!cart.length) { toast.error("Add at least one item"); return; }
     const order: Order = { id: crypto.randomUUID(), table, items: cart, ...totals, status: "Pending", timestamp: new Date().toISOString() };
-    saveOrders([...loadOrders(), order]);
+    try {
+  await createOrder(order);
+  setCart([]);
+  setTable(null);
+
+  toast.success(`Order for Table ${table} sent to kitchen`, {
+    description: `${count} items · ${money(totals.total)}`,
+  });
+} catch (error) {
+  console.error("Could not save order:", error);
+  toast.error("Could not send order to kitchen. Please try again.");
+}
     toast.success(`Order for Table ${table} sent to kitchen`, { description: `${count} items · ${money(totals.total)}` });
     setCart([]); setTable(null);
   };
