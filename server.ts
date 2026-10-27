@@ -51,7 +51,6 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
-
 app.get("/api/orders", (_req, res) => {
   const orders = db
     .prepare("SELECT * FROM orders ORDER BY timestamp DESC")
@@ -98,6 +97,71 @@ app.get("/api/orders", (_req, res) => {
 
   res.json(result);
 });
+
+app.post("/api/orders", (req, res) => {
+  const order = req.body;
+
+  if (
+    !order.id ||
+    !order.table ||
+    !Array.isArray(order.items) ||
+    order.items.length === 0
+  ) {
+    return res.status(400).json({
+      error: "Invalid order data.",
+    });
+  }
+
+  const saveOrder = db.transaction(() => {
+    db.prepare(`
+      INSERT INTO orders (
+        id, table_number, subtotal, tax, total, status, timestamp
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      order.id,
+      order.table,
+      order.subtotal,
+      order.tax,
+      order.total,
+      order.status,
+      order.timestamp
+    );
+
+    const insertItem = db.prepare(`
+      INSERT INTO order_items (
+        order_id, menu_item_id, name, price, qty
+      )
+      VALUES (?, ?, ?, ?, ?)
+    `);
+
+    for (const item of order.items) {
+      insertItem.run(
+        order.id,
+        item.id,
+        item.name,
+        item.price,
+        item.qty
+      );
+    }
+  });
+
+  try {
+    saveOrder();
+
+    res.status(201).json({
+      message: "Order saved successfully.",
+      id: order.id,
+    });
+  } catch (error) {
+    console.error("Failed to save order:", error);
+
+    res.status(500).json({
+      error: "Failed to save order.",
+    });
+  }
+});
+
 
 
 
