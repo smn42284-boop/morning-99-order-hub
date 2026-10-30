@@ -10,7 +10,11 @@ import {
   type Category, type OrderLine, type Order, type OrderStatus,
 } from "@/lib/orders";
 import { cn } from "@/lib/utils";
-import { createOrder, fetchOrders } from "@/lib/orders-api";
+import {
+  createOrder,
+  fetchOrders,
+  updateOrderStatus,
+} from "@/lib/orders-api";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -66,7 +70,7 @@ function useOrders() {
     };
   }, []);
 
-  return orders;
+  return [orders, setOrders] as const;
 }
 
 
@@ -210,6 +214,7 @@ function WaiterMode() {
   );
 }
 
+
 function OrderSummary({ cart, table, totals, onChange, onSubmit }: {
   cart: OrderLine[]; table: number | null; totals: ReturnType<typeof computeTotals>;
   onChange: (id: string, d: number) => void; onSubmit: () => void;
@@ -259,52 +264,116 @@ const COLUMNS: { status: OrderStatus; tone: string }[] = [
   { status: "Ready", tone: "bg-status-ready" },
 ];
 
+
 function KitchenMode() {
-  const orders = useOrders();
-  const advance = (id: string) =>
-    saveOrders(loadOrders().map((o) => (o.id === id ? { ...o, status: nextStatus(o.status) ?? o.status } : o)));
+  const [orders, setOrders] = useOrders();
+
+  const advance = async (id: string, currentStatus: OrderStatus) => {
+    const newStatus = nextStatus(currentStatus);
+
+    if (!newStatus) return;
+
+    try {
+      await updateOrderStatus(id, newStatus);
+
+const latestOrders = await fetchOrders();
+setOrders(latestOrders);
+
+toast.success(`Order updated to ${newStatus}`);
+    } catch (error) {
+      console.error("Could not update order:", error);
+      toast.error("Could not update order status.");
+    }
+  };
+
   const clear = () => {
-    const n = loadOrders().filter((o) => o.status === "Ready").length;
-    if (!n) { toast("No completed orders to clear"); return; }
-    saveOrders(loadOrders().filter((o) => o.status !== "Ready"));
-    toast.success(`Cleared ${n} completed order${n > 1 ? "s" : ""}`);
+    toast("Clear function needs backend support");
   };
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-5">
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">{orders.length} active order{orders.length === 1 ? "" : "s"}</p>
-        <Button variant="outline" onClick={clear}><Trash2 className="h-4 w-4" /> Clear Completed Orders</Button>
+        <p className="text-sm text-muted-foreground">
+          {orders.length} active order{orders.length === 1 ? "" : "s"}
+        </p>
+        <Button variant="outline" onClick={clear}>
+          <Trash2 className="h-4 w-4" /> Clear Completed Orders
+        </Button>
       </div>
+
       <div className="grid gap-4 md:grid-cols-3">
         {COLUMNS.map(({ status, tone }) => {
-          const list = orders.filter((o) => o.status === status).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+          const list = orders
+            .filter((o) => o.status === status)
+            .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+
           return (
             <section key={status} className="rounded-2xl bg-muted/60 p-3">
               <h2 className="mb-3 flex items-center gap-2 px-1 font-semibold">
-                <span className={cn("h-2.5 w-2.5 rounded-full", tone)} /> {status}
-                <Badge variant="secondary" className="ml-auto">{list.length}</Badge>
+                <span className={cn("h-2.5 w-2.5 rounded-full", tone)} />
+                {status}
+                <Badge variant="secondary" className="ml-auto">
+                  {list.length}
+                </Badge>
               </h2>
+
               <div className="space-y-3">
-                {list.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">Nothing here</p>}
+                {list.length === 0 && (
+                  <p className="py-6 text-center text-sm text-muted-foreground">
+                    Nothing here
+                  </p>
+                )}
+
                 {list.map((o) => (
-                  <article key={o.id} className="rounded-xl border bg-card p-4 shadow-soft">
+                  <article
+                    key={o.id}
+                    className="rounded-xl border bg-card p-4 shadow-soft"
+                  >
                     <div className="flex items-center justify-between">
-                      <h3 className="font-display text-xl">Table {o.table}</h3>
+                      <h3 className="font-display text-xl">
+                        Table {o.table}
+                      </h3>
                       <span className="flex items-center gap-1 text-xs text-muted-foreground">
                         <Clock className="h-3 w-3" />
-                        {new Date(o.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        {new Date(o.timestamp).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </span>
                     </div>
+
                     <ul className="my-3 space-y-1 text-sm">
                       {o.items.map((i) => (
-                        <li key={i.id} className="flex gap-2"><span className="font-semibold text-primary-deep">{i.qty}×</span>{i.name}</li>
+                        <li key={i.id} className="flex gap-2">
+                          <span className="font-semibold text-primary-deep">
+                            {i.qty}×
+                          </span>
+                          {i.name}
+                        </li>
                       ))}
                     </ul>
+
                     <div className="flex items-center justify-between gap-2">
                       <Badge variant="outline">{o.status}</Badge>
-                      {o.status === "Pending" && <Button size="sm" onClick={() => advance(o.id)}>Start Preparing</Button>}
-                      {o.status === "Preparing" && <Button size="sm" variant="secondary" onClick={() => advance(o.id)}>Mark Ready</Button>}
+
+                      {o.status === "Pending" && (
+                        <Button
+                          size="sm"
+                          onClick={() => advance(o.id, o.status)}
+                        >
+                          Start Preparing
+                        </Button>
+                      )}
+
+                      {o.status === "Preparing" && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => advance(o.id, o.status)}
+                        >
+                          Mark Ready
+                        </Button>
+                      )}
                     </div>
                   </article>
                 ))}

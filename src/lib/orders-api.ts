@@ -26,3 +26,22 @@ export async function createOrder(order: Order): Promise<void> {
     throw new Error("Failed to create order.");
   }
 }
+export async function updateOrderStatus(
+  id: string,
+  status: string
+): Promise<void> {
+  const response = await fetch(
+    `${API_URL}/orders/${id}/status`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ status }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to update order status.");
+  }
+}

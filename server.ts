@@ -162,7 +162,34 @@ app.post("/api/orders", (req, res) => {
   }
 });
 
+app.patch("/api/orders/:id/status", (req, res) => {
+  const orderId = req.params.id;
+  const { status } = req.body;
 
+  const allowedStatuses = ["Pending", "Preparing", "Ready", "Completed"];
+
+  if (!allowedStatuses.includes(status)) {
+    return res.status(400).json({
+      error: "Invalid order status.",
+    });
+  }
+
+  const result = db
+    .prepare("UPDATE orders SET status = ? WHERE id = ?")
+    .run(status, orderId);
+
+  if (result.changes === 0) {
+    return res.status(404).json({
+      error: "Order not found.",
+    });
+  }
+
+  res.json({
+    message: "Order status updated successfully.",
+    id: orderId,
+    status,
+  });
+});
 
 
 app.post("/api/test", (req, res) => {
