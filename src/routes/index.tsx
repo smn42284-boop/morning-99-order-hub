@@ -116,41 +116,78 @@ function WaiterMode() {
   const [table, setTable] = usePersisted<number | null>("morning99_table", null);
   const [cat, setCat] = usePersisted<Category>("morning99_category", "Breakfast");
   const [cart, setCart] = usePersisted<OrderLine[]>("morning99_cart", []);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const totals = useMemo(() => computeTotals(cart), [cart]);
   const count = cart.reduce((s, i) => s + i.qty, 0);
 
-  const add = (id: string) => {
-    const m = MENU.find((x) => x.id === id)!;
-    setCart((c) => c.some((l) => l.id === id)
-      ? c.map((l) => (l.id === id ? { ...l, qty: l.qty + 1 } : l))
-      : [...c, { id, name: m.name, price: m.price, qty: 1 }]);
-  };
+  
+const add = (id: string) => {
+  if (!table) {
+    toast.error("Please select a table before adding items.");
+    return;
+  }
+
+  const m = MENU.find((x) => x.id === id)!;
+
+  setCart((c) => c.some((l) => l.id === id)
+    ? c.map((l) => (l.id === id ? { ...l, qty: l.qty + 1 } : l))
+    : [...c, { id, name: m.name, price: m.price, qty: 1 }]
+  );
+};
+
   const change = (id: string, d: number) =>
     setCart((c) => c.map((l) => (l.id === id ? { ...l, qty: l.qty + d } : l)).filter((l) => l.qty > 0));
 
-  const submit = async() => {
-    if (!table) { toast.error("Please select a table first"); return; }
-    if (!cart.length) { toast.error("Add at least one item"); return; }
-    const order: Order = { id: crypto.randomUUID(), table, items: cart, ...totals, status: "Pending", timestamp: new Date().toISOString() };
-    try {
-  await createOrder(order);
-  setCart([]);
-  setTable(null);
+  
+const submit = async () => {
+  if (!table) {
+    toast.error("Please select a table first");
+    return;
+  }
 
-  toast.success(`Order for Table ${table} sent to kitchen`, {
-    description: `${count} items · ${money(totals.total)}`,
-  });
-} catch (error) {
-  console.error("Could not save order:", error);
-  toast.error("Could not send order to kitchen. Please try again.");
-}
-    toast.success(`Order for Table ${table} sent to kitchen`, { description: `${count} items · ${money(totals.total)}` });
-    setCart([]); setTable(null);
+  if (!cart.length) {
+    toast.error("Add at least one item");
+    return;
+  }
+
+  setIsSubmitting(true);
+
+  const order: Order = {
+    id: crypto.randomUUID(),
+    table,
+    items: cart,
+    ...totals,
+    status: "Pending",
+    timestamp: new Date().toISOString(),
   };
 
+  try {
+    await createOrder(order);
+
+    setCart([]);
+    setTable(null);
+
+    toast.success(`Order for Table ${table} sent to kitchen`, {
+      description: `${count} items · ${money(totals.total)}`,
+    });
+  } catch (error) {
+    console.error("Could not save order:", error);
+    toast.error("Could not send order to kitchen. Please try again.");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
+
   const summary = (
-    <OrderSummary cart={cart} table={table} totals={totals} onChange={change} onSubmit={submit} />
-  );
+<OrderSummary
+  cart={cart}
+  table={table}
+  totals={totals}
+  onChange={change}
+  onSubmit={submit}
+  isSubmitting={isSubmitting}
+/>  );
 
   return (
     <main className="mx-auto grid max-w-6xl gap-6 px-4 py-5 pb-28 lg:grid-cols-[1fr_340px] lg:pb-6">
@@ -223,9 +260,20 @@ function WaiterMode() {
 }
 
 
-function OrderSummary({ cart, table, totals, onChange, onSubmit }: {
-  cart: OrderLine[]; table: number | null; totals: ReturnType<typeof computeTotals>;
-  onChange: (id: string, d: number) => void; onSubmit: () => void;
+function OrderSummary({
+  cart,
+  table,
+  totals,
+  onChange,
+  onSubmit,
+  isSubmitting,
+}: {
+  cart: OrderLine[];
+  table: number | null;
+  totals: ReturnType<typeof computeTotals>;
+  onChange: (id: string, d: number) => void;
+  onSubmit: () => void;
+  isSubmitting: boolean;
 }) {
   return (
     <div className="space-y-4">
@@ -257,8 +305,15 @@ function OrderSummary({ cart, table, totals, onChange, onSubmit }: {
         <Row label="Tax (8%)" value={money(totals.tax)} />
         <div className="flex justify-between pt-1 text-lg font-semibold"><span>Total</span><span>{money(totals.total)}</span></div>
       </div>
-      <Button size="lg" className="w-full" onClick={onSubmit}><ChefHat className="h-4 w-4" /> Submit Order to Kitchen</Button>
-    </div>
+<Button
+  size="lg"
+  className="w-full"
+  onClick={onSubmit}
+  disabled={isSubmitting}
+>
+  <ChefHat className="h-4 w-4" />
+  {isSubmitting ? "Submitting..." : "Submit Order to Kitchen"}
+</Button>    </div>
   );
 }
 
