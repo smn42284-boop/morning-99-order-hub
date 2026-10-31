@@ -14,7 +14,11 @@ import d2 from "@/assets/menu/d2.jpg";
 export type Category = "Breakfast" | "Coffee & Drinks" | "Specials" | "Desserts";
 export type MenuItem = { id: string; name: string; price: number; category: Category; desc: string; img: string };
 export type OrderLine = { id: string; name: string; price: number; qty: number };
-export type OrderStatus = "Pending" | "Preparing" | "Ready";
+export type OrderStatus =
+  | "Pending"
+  | "Preparing"
+  | "Ready"
+  | "Completed";
 export type Order = {
   id: string;
   table: number;
@@ -68,5 +72,13 @@ export function saveOrders(orders: Order[]) {
   window.dispatchEvent(new Event("morning99:orders"));
 }
 
-export const nextStatus = (s: OrderStatus): OrderStatus | null =>
-  s === "Pending" ? "Preparing" : s === "Preparing" ? "Ready" : null;
+export function nextStatus(status: OrderStatus): OrderStatus | null {
+  const transitions: Record<OrderStatus, OrderStatus | null> = {
+    Pending: "Preparing",
+    Preparing: "Ready",
+    Ready: "Completed",
+    Completed: null,
+  };
+
+  return transitions[status];
+}

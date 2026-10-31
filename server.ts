@@ -166,7 +166,12 @@ app.patch("/api/orders/:id/status", (req, res) => {
   const orderId = req.params.id;
   const { status } = req.body;
 
-  const allowedStatuses = ["Pending", "Preparing", "Ready", "Completed"];
+const allowedStatuses = [
+  "Pending",
+  "Preparing",
+  "Ready",
+  "Completed",
+];
 
   if (!allowedStatuses.includes(status)) {
     return res.status(400).json({
@@ -189,6 +194,40 @@ app.patch("/api/orders/:id/status", (req, res) => {
     id: orderId,
     status,
   });
+});
+
+app.delete("/api/orders/completed", (req, res) => {
+  try {
+    const deleteCompletedOrders = db.transaction(() => {
+      // First, delete items belonging to completed orders.
+      db.prepare(`
+        DELETE FROM order_items
+        WHERE order_id IN (
+          SELECT id FROM orders WHERE status = ?
+        )
+      `).run("Completed");
+
+      // Then, delete the completed orders.
+      const result = db.prepare(`
+        DELETE FROM orders WHERE status = ?
+      `).run("Completed");
+
+      return result.changes;
+    });
+
+    const deletedCount = deleteCompletedOrders();
+
+    res.json({
+      message: "Completed orders deleted successfully.",
+      deletedCount,
+    });
+  } catch (error) {
+    console.error("Could not delete completed orders:", error);
+
+    res.status(500).json({
+      error: "Could not delete completed orders.",
+    });
+  }
 });
 
 

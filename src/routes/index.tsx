@@ -14,6 +14,7 @@ import {
   createOrder,
   fetchOrders,
   updateOrderStatus,
+  deleteCompletedOrders,
 } from "@/lib/orders-api";
 
 export const Route = createFileRoute("/")({
@@ -45,6 +46,7 @@ function usePersisted<T>(key: string, initial: T) {
 }
 
 
+
 function useOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
 
@@ -65,13 +67,19 @@ function useOrders() {
 
     sync();
 
+    // Fetch again every 5 seconds.
+    const intervalId = window.setInterval(sync, 5000);
+
+    // Stop polling when the component is removed.
     return () => {
       active = false;
+      window.clearInterval(intervalId);
     };
   }, []);
 
   return [orders, setOrders] as const;
 }
+
 
 
 function App() {
@@ -262,6 +270,7 @@ const COLUMNS: { status: OrderStatus; tone: string }[] = [
   { status: "Pending", tone: "bg-status-pending" },
   { status: "Preparing", tone: "bg-status-preparing" },
   { status: "Ready", tone: "bg-status-ready" },
+  { status: "Completed", tone: "bg-status-ready" }
 ];
 
 
@@ -286,9 +295,24 @@ toast.success(`Order updated to ${newStatus}`);
     }
   };
 
-  const clear = () => {
-    toast("Clear function needs backend support");
-  };
+  const clear = async () => {
+  try {
+    const deletedCount = await deleteCompletedOrders();
+
+    if (deletedCount === 0) {
+      toast("No completed orders to clear");
+      return;
+    }
+
+    const latestOrders = await fetchOrders();
+    setOrders(latestOrders);
+
+    toast.success(`Cleared ${deletedCount} completed order${deletedCount > 1 ? "s" : ""}`);
+  } catch (error) {
+    console.error("Could not clear completed orders:", error);
+    toast.error("Could not clear completed orders.");
+  }
+};
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-5">
@@ -374,6 +398,17 @@ toast.success(`Order updated to ${newStatus}`);
                           Mark Ready
                         </Button>
                       )}
+                        {o.status === "Ready" && (
+  <Button
+    size="sm"
+    variant="secondary"
+    onClick={() => advance(o.id, o.status)}
+  >
+    Complete Order
+  </Button>
+)}
+
+                      
                     </div>
                   </article>
                 ))}

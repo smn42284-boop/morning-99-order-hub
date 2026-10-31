@@ -45,3 +45,18 @@ export async function updateOrderStatus(
     throw new Error("Failed to update order status.");
   }
 }
+
+export async function deleteCompletedOrders(): Promise<number> {
+  const response = await fetch(`${API_URL}/orders/completed`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to delete completed orders.");
+  }
+
+  const data = await response.json();
+
+  return data.deletedCount;
+}
+
